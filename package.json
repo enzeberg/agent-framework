@@ -1,0 +1,27 @@
+{
+  "name": "agent-framework",
+  "version": "0.0.1",
+  "description": "A local-first, extensible AI Agent framework with state management and economic LLM usage",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "dev": "bun src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --target node",
+    "test": "bun test",
+    "demo": "bun examples/simple-demo.ts",
+    "example:planner": "bun examples/task-planner.ts",
+    "example:coder": "bun examples/code-generator.ts"
+  },
+  "keywords": [
+    "ai",
+    "agent",
+    "llm",
+    "framework",
+    "typescript"
+  ],
+  "dependencies": {},
+  "devDependencies": {
+    "bun-types": "latest"
+  }
+}
