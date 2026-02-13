@@ -1,18 +1,38 @@
-import { describe, test, expect, beforeEach } from 'bun:test'
+import { describe, test, expect, beforeEach, afterEach } from 'bun:test'
 import { Agent, WorkingHistory, Memory, Todo, ModelRouter } from '../src'
+
+// ---------------------------------------------------------------------------
+// Helper: Temporarily remove LLM API keys so ModelRouter works in mock mode.
+// ---------------------------------------------------------------------------
+const LLM_ENV_KEYS = ['OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GEMINI_API_KEY'] as const
+let savedEnv: Record<string, string | undefined> = {}
+
+function clearLLMKeys() {
+  savedEnv = {}
+  for (const key of LLM_ENV_KEYS) {
+    savedEnv[key] = process.env[key]
+    delete process.env[key]
+  }
+}
+
+function restoreLLMKeys() {
+  for (const key of LLM_ENV_KEYS) {
+    if (savedEnv[key] !== undefined) {
+      process.env[key] = savedEnv[key]
+    }
+  }
+}
 
 describe('Agent', () => {
   let agent: Agent
   
   beforeEach(async () => {
+    clearLLMKeys()
+
     const modelRouter = new ModelRouter({
       defaultModel: 'gpt-3.5-turbo',
-      fallbackModel: 'claude-3-haiku',
       strategy: 'balanced',
       maxCostPerRequest: 0.10,
-      providers: [
-        { name: 'openai', models: ['gpt-3.5-turbo'], enabled: true }
-      ]
     })
     
     agent = new Agent({
@@ -27,6 +47,10 @@ describe('Agent', () => {
     })
     
     await agent.init()
+  })
+
+  afterEach(() => {
+    restoreLLMKeys()
   })
   
   test('initializes with idle state', () => {
@@ -208,30 +232,31 @@ describe('Todo', () => {
 })
 
 describe('ModelRouter', () => {
-  test('selects model based on complexity', () => {
-    const router = new ModelRouter({
-      defaultModel: 'gpt-3.5-turbo',
-      fallbackModel: 'claude-3-haiku',
-      strategy: 'balanced',
-      maxCostPerRequest: 0.10,
-      providers: []
-    })
-    
-    const model = router.selectModel({
-      complexity: 'complex',
-      qualityRequirement: 'high'
-    })
-    
-    expect(model).toBe('claude-3-sonnet')
+  test('returns mock model when no providers available', () => {
+    clearLLMKeys()
+    try {
+      const router = new ModelRouter({
+        defaultModel: 'gpt-3.5-turbo',
+        strategy: 'balanced',
+        maxCostPerRequest: 0.10,
+      })
+
+      // Env keys cleared → no providers → returns defaultModel
+      expect(router.hasAvailableProviders()).toBe(false)
+      const model = router.selectModel({
+        complexity: 'complex',
+        qualityRequirement: 'high'
+      })
+      expect(model).toBe('gpt-3.5-turbo')
+    } finally {
+      restoreLLMKeys()
+    }
   })
   
   test('tracks cost', () => {
     const router = new ModelRouter({
-      defaultModel: 'gpt-3.5-turbo',
-      fallbackModel: 'claude-3-haiku',
       strategy: 'balanced',
       maxCostPerRequest: 0.10,
-      providers: []
     })
     
     router.trackCost('gpt-4', 0.05)

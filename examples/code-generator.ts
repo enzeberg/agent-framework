@@ -4,22 +4,8 @@ async function main() {
   console.log('🚀 Code Generator Agent Example\n')
   
   const modelRouter = new ModelRouter({
-    defaultModel: 'gpt-4',
-    fallbackModel: 'gpt-3.5-turbo',
     strategy: 'quality',
     maxCostPerRequest: 0.50,
-    providers: [
-      {
-        name: 'openai',
-        models: ['gpt-4', 'gpt-3.5-turbo'],
-        enabled: true
-      },
-      {
-        name: 'anthropic',
-        models: ['claude-3-sonnet', 'claude-3-haiku'],
-        enabled: true
-      }
-    ]
   })
   
   const agent = new Agent({

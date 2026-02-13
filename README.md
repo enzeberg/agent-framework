@@ -4,13 +4,14 @@ A local-first, extensible AI Agent framework inspired by Claude Code, designed f
 
 ## Features
 
+- **Multi-Provider LLM Integration**: Supports OpenAI, Anthropic (Claude), and Google Gemini out of the box
+- **Automatic Provider Detection**: Set API keys in `.env`, ModelRouter auto-detects and routes to available providers
+- **Tool-Calling Loop**: Automatic multi-round tool execution (LLM → tool_calls → execute → LLM → ...)
 - **Component-based Architecture**: Modular design with pluggable components (Memory, WorkingHistory, Todo, SubAgent)
-- **Multi-Model Support**: Smart model routing across multiple LLM providers (OpenAI, Anthropic, local models)
+- **Smart Model Routing**: Selects from available models based on task complexity, cost, and quality requirements
 - **Economic Token Management**: Intelligent context compression, truncation, and model selection
 - **State Persistence**: SQLite-based state management with export/import capabilities
-- **MCP Tool Integration**: Built-in support for Model Context Protocol tools
 - **Observable & Debuggable**: Event system, state snapshots, and time-travel debugging
-- **Plugin System**: Easy extension with third-party components
 
 ## Quick Start
 
@@ -18,12 +19,15 @@ A local-first, extensible AI Agent framework inspired by Claude Code, designed f
 # Install dependencies
 bun install
 
-# Run simple demo
-bun demo
+# Configure API key (set at least one)
+cp .env.example .env
+# Edit .env: set OPENAI_API_KEY, ANTHROPIC_API_KEY, or GEMINI_API_KEY
 
-# Run examples
-bun example:planner    # Task planning assistant
-bun example:coder      # Code generation assistant
+# Run demo with real LLM + tool calling
+bun demo:llm
+
+# Run mock demo (no API key needed)
+bun demo
 
 # Run tests
 bun test
@@ -31,21 +35,32 @@ bun test
 
 ## Basic Usage
 
-```typescript
-import { Agent, WorkingHistory, Memory, Todo, ModelRouter } from './src'
+### With Real LLM + Tools
 
-// Create model router
+```typescript
+import { Agent, WorkingHistory, Memory, Todo, ModelRouter, type Tool } from './src'
+
+// ModelRouter auto-detects providers from .env
 const modelRouter = new ModelRouter({
-  defaultModel: 'gpt-3.5-turbo',
-  fallbackModel: 'claude-3-haiku',
   strategy: 'balanced',
   maxCostPerRequest: 0.10,
-  providers: [
-    { name: 'openai', models: ['gpt-4', 'gpt-3.5-turbo'], enabled: true }
-  ]
 })
 
-// Create agent with components
+// Define tools
+const myTool: Tool = {
+  name: 'get_weather',
+  description: 'Get weather for a city',
+  inputSchema: {
+    type: 'object',
+    properties: { city: { type: 'string' } },
+    required: ['city']
+  },
+  async execute(input) {
+    return { city: input.city, temp: '22°C', condition: 'Sunny' }
+  }
+}
+
+// Create agent — no need to specify a provider manually
 const agent = new Agent({
   name: 'MyAgent',
   components: [
@@ -54,18 +69,32 @@ const agent = new Agent({
     new Todo({ autoDecompose: true })
   ],
   modelRouter,
-  systemPrompt: 'You are a helpful AI assistant.',
-  maxTokens: 8000
+  tools: [myTool],
+  systemPrompt: 'You are a helpful assistant. Use tools when needed.',
+  maxTokens: 4000
 })
 
-// Initialize and execute
 await agent.init()
-const result = await agent.execute('Your task here')
+const result = await agent.execute('What is the weather in Tokyo?')
 console.log(result)
+// ModelRouter selects the best available model, calls the LLM,
+// executes get_weather tool, and returns the final answer.
+```
 
-// Get metrics
-console.log('Cost:', agent.getCost())
-console.log('Tokens:', agent.getTokenUsage())
+### Mock Mode (No API Key)
+
+```typescript
+// When no API key is set in .env, Agent falls back to mock mode automatically
+const agent = new Agent({
+  name: 'MockAgent',
+  components: [ new WorkingHistory() ],
+  modelRouter: new ModelRouter({ strategy: 'balanced', maxCostPerRequest: 0.10 }),
+  systemPrompt: 'You are a helpful AI assistant.'
+})
+
+await agent.init()
+const result = await agent.execute('Hello')
+// Returns: "[Mock] Response for: Hello"
 ```
 
 ## Architecture
@@ -85,13 +114,14 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed design.
 ```
 agent-framework/
 ├── src/
-│   ├── core/              # Core framework (Agent, EventBus, Storage, ModelRouter, ContextBuilder)
+│   ├── core/              # Core framework (Agent, EventBus, Storage, ModelRouter, LLM Providers)
 │   ├── components/        # Built-in components (WorkingHistory, Memory, Todo, SubAgent)
 │   ├── types/             # TypeScript types
 │   └── index.ts           # Main exports
-├── examples/              # Example agents (simple-demo, task-planner, code-generator)
+├── examples/              # Example agents (simple-demo, llm-demo, task-planner, code-generator)
 ├── docs/                  # Documentation
 ├── tests/                 # Test suites
+├── .env.example           # Environment variable template
 └── package.json
 ```
 
@@ -101,41 +131,47 @@ agent-framework/
 - **Language**: TypeScript
 - **Database**: SQLite (Bun built-in)
 
-## Installation
+## Configuration
+
+Create a `.env` file from the template:
 
 ```bash
-# Install dependencies
-bun install
-
-# Run simple demo
-bun demo
-
-# Run examples
-bun example:planner    # Task planning assistant
-bun example:coder      # Code generation assistant
-
-# Run tests
-bun test
+cp .env.example .env
 ```
+
+Set at least one provider API key:
+
+| Provider | Environment Variable | Models |
+|----------|---------------------|--------|
+| **OpenAI** | `OPENAI_API_KEY` | gpt-4o, gpt-4o-mini, gpt-4, gpt-3.5-turbo |
+| **Anthropic** | `ANTHROPIC_API_KEY` | claude-sonnet-4, claude-3.5-sonnet, claude-3.5-haiku |
+| **Google Gemini** | `GEMINI_API_KEY` | gemini-2.0-flash, gemini-1.5-pro, gemini-1.5-flash |
+
+ModelRouter automatically detects which keys are set and only offers models from available providers.
 
 ## Project Status
 
 ✅ **Core Framework**: Complete and functional
+✅ **LLM Integration**: OpenAI, Anthropic, Gemini providers
+✅ **Tool-Calling Loop**: Multi-round LLM → tools → LLM execution
+✅ **Auto Provider Detection**: ModelRouter reads .env and creates providers
 ✅ **Components**: 4 built-in components implemented
-✅ **Model Router**: Intelligent model selection
+✅ **Model Router**: Smart model selection from available providers
 ✅ **State Management**: SQLite persistence with snapshots
 ✅ **Observability**: Complete event system
-✅ **Documentation**: Comprehensive docs and examples
 ✅ **Tests**: Unit tests for core functionality
 
-🔄 **LLM Integration**: Mock implementation (ready for real API)
 🔄 **MCP Tools**: Interface defined (ready for implementation)
-
-See [IMPLEMENTATION_NOTES.md](./IMPLEMENTATION_NOTES.md) for details.
 
 ## Development
 
 ```bash
+# Run LLM demo with tools (requires .env)
+bun demo:llm
+
+# Run mock demo (no API key needed)
+bun demo
+
 # Run examples
 bun examples/task-planner.ts
 bun examples/code-generator.ts
@@ -157,76 +193,54 @@ idle → running → paused/completed/failed
   └───────┴─────────┘ (resumable)
 ```
 
-### Component System
-
-Components are self-contained modules that:
-- Maintain their own state
-- Respond to events
-- Contribute to LLM context
-- Can depend on other components
-
 ### Model Router
 
-Intelligently selects models based on:
-- Task complexity
-- Token budget
-- Cost constraints
-- Provider availability
+ModelRouter is the central orchestrator for LLM calls:
+- Auto-detects available providers from .env API keys
+- Maintains a registry of models with tier, cost, and context window info
+- `selectModel()` picks the best model from available ones based on criteria
+- `call()` routes to the correct provider and returns a unified response
+
+### Tool-Calling Loop
+
+When tools are provided, the agent automatically runs a multi-round loop:
+
+```
+1. Build messages from system prompt + component context + user task
+2. ModelRouter selects model and calls the right provider
+3. If LLM returns tool_calls:
+   a. Execute each tool
+   b. Append tool results as messages
+   c. Go to step 2
+4. If LLM returns final text → done
+```
+
+Maximum rounds are configurable via `maxToolRounds` (default: 10).
 
 ### Context Building
 
-Hierarchical context construction:
+Hierarchical context construction with token budgets:
 ```
-System Prompt (10%)
-  ↓
-Memory Context (20%)
-  ↓
-Working History (40%)
-  ↓
-Todo Context (20%)
-  ↓
-Current Task (10%)
+System Prompt (10%)  →  Memory Context (20%)  →  Working History (40%)  →  Todo Context (20%)  →  Current Task (10%)
 ```
 
 ## Examples
 
-### Task Planning Assistant
+### LLM + Tool Calling (Real API)
 
-```typescript
-const planner = new Agent({
-  name: 'TaskPlanner',
-  components: [
-    new WorkingHistory({ maxMessages: 50 }),
-    new Memory({ compressionInterval: 20 }),
-    new Todo({ autoDecompose: true })
-  ],
-  modelRouter,
-  systemPrompt: 'You are a task planning assistant.'
-})
-
-await planner.init()
-await planner.execute('Create a project plan for building a REST API')
+```bash
+bun demo:llm    # Requires .env with at least one API key
 ```
 
-### Code Generation Assistant
+See `examples/llm-demo.ts` for a complete example with 3 tools (time, calculator, knowledge search).
 
-```typescript
-const coder = new Agent({
-  name: 'CodeGenerator',
-  components: [
-    new WorkingHistory(),
-    new Memory(),
-    new SubAgent({ maxConcurrent: 3 })
-  ],
-  modelRouter,
-  systemPrompt: 'You are a code generation assistant.'
-})
+### Mock Mode
 
-await coder.init()
-await coder.execute('Generate a TypeScript REST API with authentication')
+```bash
+bun demo        # No API key needed
 ```
 
-See `examples/` directory for complete working examples.
+See `examples/` directory for all examples.
 
 ## License
 

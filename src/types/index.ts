@@ -8,7 +8,7 @@ export type AgentEvent =
   | { type: 'component:state_updated'; component: string; state: any; timestamp: number }
   | { type: 'llm:call_started'; model: string; provider: string; timestamp: number }
   | { type: 'llm:call_completed'; model: string; tokens: TokenUsage; cost: number; timestamp: number }
-  | { type: 'tool:executed'; tool: string; input: any; output: any; timestamp: number }
+  | { type: 'tool:executed'; tool: string; input: any; output: any; duration: number; timestamp: number }
   | { type: 'context:built'; fragments: ContextFragment[]; totalTokens: number; timestamp: number }
   | { type: 'error:occurred'; error: Error; context: any; timestamp: number }
 
@@ -45,6 +45,7 @@ export interface ComponentContext {
   logger: any
 }
 
+// Internal framework message (for WorkingHistory etc.)
 export interface Message {
   id: string
   role: 'user' | 'assistant' | 'system'
@@ -53,6 +54,15 @@ export interface Message {
   tokens: number
   important: boolean
   metadata?: Record<string, any>
+}
+
+// Chat message format for LLM API calls (OpenAI-compatible)
+export interface ChatMessage {
+  role: 'system' | 'user' | 'assistant' | 'tool'
+  content: string | null
+  tool_calls?: ToolCall[]
+  tool_call_id?: string
+  name?: string
 }
 
 export interface Task {
@@ -75,30 +85,50 @@ export interface Task {
 export interface Tool {
   name: string
   description: string
-  inputSchema: any
+  inputSchema: Record<string, any>
   execute(input: any): Promise<any>
 }
 
-export interface LLMRequest {
-  prompt: string
+// Tool definition sent to LLM (OpenAI function calling format)
+export interface ToolDefinition {
+  type: 'function'
+  function: {
+    name: string
+    description: string
+    parameters: Record<string, any>
+  }
+}
+
+export interface ModelRequest {
+  messages: ChatMessage[]
   model?: string
   temperature?: number
   maxTokens?: number
-  tools?: Tool[]
+  tools?: ToolDefinition[]
 }
 
-export interface LLMResponse {
-  content: string
+export interface ModelResponse {
+  content: string | null
   model: string
   tokens: TokenUsage
   cost: number
   toolCalls?: ToolCall[]
+  finishReason?: 'stop' | 'tool_calls' | 'length' | 'content_filter'
 }
 
 export interface ToolCall {
   id: string
+  type: 'function'
+  function: {
+    name: string
+    arguments: string
+  }
+}
+
+// LLM Provider interface
+export interface IModelProvider {
   name: string
-  input: any
+  call(request: ModelRequest): Promise<ModelResponse>
 }
 
 export type Complexity = 'simple' | 'medium' | 'complex'

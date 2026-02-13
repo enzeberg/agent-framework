@@ -11,13 +11,8 @@ async function demo() {
   console.log('📦 Creating agent with components...')
   
   const modelRouter = new ModelRouter({
-    defaultModel: 'gpt-3.5-turbo',
-    fallbackModel: 'claude-3-haiku',
     strategy: 'balanced',
     maxCostPerRequest: 0.10,
-    providers: [
-      { name: 'openai', models: ['gpt-4', 'gpt-3.5-turbo'], enabled: true }
-    ]
   })
   
   const agent = new Agent({

@@ -10,6 +10,7 @@
     "build": "bun build src/index.ts --outdir dist --target node",
     "test": "bun test",
     "demo": "bun examples/simple-demo.ts",
+    "demo:llm": "bun examples/llm-demo.ts",
     "example:planner": "bun examples/task-planner.ts",
     "example:coder": "bun examples/code-generator.ts"
   },
