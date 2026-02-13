@@ -23,11 +23,11 @@ bun install
 cp .env.example .env
 # Edit .env: set OPENAI_API_KEY, ANTHROPIC_API_KEY, or GEMINI_API_KEY
 
+# Run mock demo (no model provider API key needed)
+bun demo
+
 # Run demo with real LLM + tool calling
 bun demo:llm
-
-# Run mock demo (no API key needed)
-bun demo
 
 # Run tests
 bun test
