@@ -85,12 +85,11 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed design.
 ```
 agent-framework/
 ├── src/
-│   ├── core/              # Core framework
-│   ├── components/        # Built-in components
-│   ├── strategies/        # Economic strategies
-│   ├── integrations/      # LLM & tool integrations
-│   ├── plugins/           # Plugin system
-│   └── examples/          # Example agents
+│   ├── core/              # Core framework (Agent, EventBus, Storage, ModelRouter, ContextBuilder)
+│   ├── components/        # Built-in components (WorkingHistory, Memory, Todo, SubAgent)
+│   ├── types/             # TypeScript types
+│   └── index.ts           # Main exports
+├── examples/              # Example agents (simple-demo, task-planner, code-generator)
 ├── docs/                  # Documentation
 ├── tests/                 # Test suites
 └── package.json
@@ -118,16 +117,6 @@ bun example:coder      # Code generation assistant
 # Run tests
 bun test
 ```
-
-## Documentation
-
-- [Architecture Design](./ARCHITECTURE.md) - System architecture and design decisions
-- [Component Guide](./docs/COMPONENTS.md) - How to use and create components
-- [Model Router](./docs/MODEL_ROUTER.md) - Model selection and routing
-- [Data Flow](./docs/DATA_FLOW.md) - Complete execution flow
-- [Getting Started](./docs/GETTING_STARTED.md) - Quick start guide
-- [Implementation Notes](./IMPLEMENTATION_NOTES.md) - Implementation details
-- [Project Summary](./PROJECT_SUMMARY.md) - Project overview
 
 ## Project Status
 
@@ -238,14 +227,6 @@ await coder.execute('Generate a TypeScript REST API with authentication')
 ```
 
 See `examples/` directory for complete working examples.
-
-## Documentation
-
-- [Architecture Design](./ARCHITECTURE.md)
-- [Component Guide](./docs/COMPONENTS.md)
-- [Model Router](./docs/MODEL_ROUTER.md)
-- [Plugin Development](./docs/PLUGINS.md)
-- [API Reference](./docs/API.md)
 
 ## License
 
